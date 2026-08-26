@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { LayersIcon, ImageIcon, ShieldAlertIcon } from './Icons';
+import { buildingSegmentation } from '../data/metrics';
 
-export default function TelemetryHUD({ buildings, roads, engaged, onEngageToggle, onOpenGallery, triageMode }) {
+export default function TelemetryHUD({
+  buildings,
+  roads,
+  engaged,
+  onEngageToggle,
+  onOpenGallery,
+  onOpenMetrics,
+  onOpenVillagePicker,
+  activeVillageName,
+  onExportCsv,
+  triageMode,
+}) {
   const [timeStr, setTimeStr] = useState('');
 
   useEffect(() => {
@@ -69,6 +81,16 @@ export default function TelemetryHUD({ buildings, roads, engaged, onEngageToggle
 
       <div className="hud-sep" />
 
+      {/* Active Demo Region */}
+      <div className="flex items-center gap-2 px-3 shrink-0 max-w-[180px]">
+        <span className="font-mono text-xs text-gcs-dim">REGION</span>
+        <span className="font-mono text-xs font-bold text-white truncate" title={activeVillageName}>
+          {activeVillageName}
+        </span>
+      </div>
+
+      <div className="hud-sep" />
+
       {/* Building Count */}
       <div className="flex items-center gap-2 px-3 shrink-0">
         <span className="font-mono text-xs text-gcs-dim">BLDGS</span>
@@ -125,10 +147,12 @@ export default function TelemetryHUD({ buildings, roads, engaged, onEngageToggle
 
       <div className="hud-sep" />
 
-      {/* IoU Score */}
+      {/* IoU Score — sourced from data/metrics.js, single source of truth */}
       <div className="flex items-center gap-2 px-3 shrink-0">
         <span className="font-mono text-xs text-gcs-dim">IoU</span>
-        <span className="font-mono text-xs font-bold text-gcs-purple">0.401</span>
+        <span className="font-mono text-xs font-bold text-gcs-purple">
+          {(buildingSegmentation.iou / 100).toFixed(3)}
+        </span>
       </div>
 
       <div className="flex-1 min-w-[20px]" />
@@ -149,11 +173,48 @@ export default function TelemetryHUD({ buildings, roads, engaged, onEngageToggle
         <span className="font-mono text-xs text-gcs-dim">{timeStr}</span>
       </div>
 
+      {/* Region / Village Picker Button */}
+      <button
+        id="hud-region-picker-btn"
+        onClick={onOpenVillagePicker}
+        className="shrink-0 flex items-center gap-1.5 font-mono text-xs font-bold tracking-widest px-3 py-1 border border-gcs-border text-gcs-dim hover:text-gcs-green hover:border-gcs-green bg-transparent transition-colors ml-2"
+        style={{ height: '28px', letterSpacing: '0.1em' }}
+        title="Change Demo Region"
+      >
+        <ImageIcon className="w-3.5 h-3.5" />
+        REGIONS
+      </button>
+
+      {/* CSV Export */}
+      <button
+        id="hud-export-csv-btn"
+        onClick={onExportCsv}
+        disabled={!buildings.length}
+        className="shrink-0 flex items-center gap-1.5 font-mono text-xs font-bold tracking-widest px-3 py-1 border border-gcs-border text-gcs-dim hover:text-gcs-green hover:border-gcs-green bg-transparent transition-colors ml-2 disabled:opacity-30 disabled:cursor-not-allowed"
+        style={{ height: '28px', letterSpacing: '0.1em' }}
+        title="Export current survey results as CSV"
+      >
+        <span className="download-glyph" aria-hidden="true">↓</span>
+        EXPORT CSV
+      </button>
+
+      {/* Overall Metrics Button */}
+      <button
+        id="hud-metrics-btn"
+        onClick={onOpenMetrics}
+        className="shrink-0 flex items-center gap-1.5 font-mono text-xs font-bold tracking-widest px-3 py-1 border border-gcs-border text-gcs-dim hover:text-gcs-purple hover:border-gcs-purple bg-transparent transition-colors ml-2"
+        style={{ height: '28px', letterSpacing: '0.1em' }}
+        title="Open Overall Metrics"
+      >
+        <LayersIcon className="w-3.5 h-3.5" />
+        METRICS
+      </button>
+
       {/* ML Gallery Button */}
       <button
         id="hud-ml-gallery-btn"
         onClick={onOpenGallery}
-        className="shrink-0 flex items-center gap-1.5 font-mono text-xs font-bold tracking-widest px-3 py-1 border border-gcs-border text-gcs-dim hover:text-gcs-cyan hover:border-gcs-cyan bg-transparent transition-colors"
+        className="shrink-0 flex items-center gap-1.5 font-mono text-xs font-bold tracking-widest px-3 py-1 border border-gcs-border text-gcs-dim hover:text-gcs-cyan hover:border-gcs-cyan bg-transparent transition-colors ml-2"
         style={{ height: '28px', letterSpacing: '0.1em' }}
         title="Open ML Gallery"
       >
@@ -164,7 +225,7 @@ export default function TelemetryHUD({ buildings, roads, engaged, onEngageToggle
       {/* ENGAGE / DISENGAGE Button */}
       <button
         onClick={onEngageToggle}
-        className={`engage-btn shrink-0 font-mono text-xs font-bold tracking-widest px-4 py-1 border text-gcs-green border-gcs-green bg-transparent ${
+        className={`engage-btn shrink-0 font-mono text-xs font-bold tracking-widest px-4 py-1 border text-gcs-green border-gcs-green bg-transparent ml-2 ${
           engaged ? 'active' : ''
         }`}
         style={{ height: '28px', letterSpacing: '0.15em' }}

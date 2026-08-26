@@ -61,10 +61,11 @@ export default function LayerControls({
         </label>
 
         {/* Water */}
-        <label className="toggle-wrap flex items-center gap-2 cursor-pointer">
+        <label className={`toggle-wrap flex items-center gap-2 ${waterCount > 0 ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'}`}>
           <input
             type="checkbox"
-            checked={layerVis.water}
+            checked={layerVis.water && waterCount > 0}
+            disabled={waterCount === 0}
             onChange={e => onToggleLayer('water', e.target.checked)}
           />
           <div className="toggle-track">
@@ -72,7 +73,7 @@ export default function LayerControls({
           </div>
           <span className="w-2 h-2 flex-shrink-0 bg-[#00d4ff]" />
           <span className="font-mono text-xs text-gcs-text">WATER</span>
-          <span className="font-mono text-xs text-gcs-dim ml-auto">{waterCount}</span>
+          <span className="font-mono text-xs text-gcs-dim ml-auto">{waterCount === 0 ? 'NO EVIDENCE' : waterCount}</span>
         </label>
       </div>
 

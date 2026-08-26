@@ -69,3 +69,10 @@ export function confColor(prob) {
   if (prob >= 0.6) return '#ffaa00'; // Amber
   return '#ff3355';                  // Crimson
 }
+
+
+export function bboxToLatLngBounds(bbox = { x0: 0, x1: TILE_W, y0: 0, y1: TILE_H }) {
+  const [south, west] = pxToLatLng(bbox.x0, bbox.y1);
+  const [north, east] = pxToLatLng(bbox.x1, bbox.y0);
+  return [[south, west], [north, east]];
+}

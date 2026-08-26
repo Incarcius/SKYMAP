@@ -242,3 +242,30 @@ html, body, #root {
   text-transform: uppercase;
 }
 
+
+
+.gcs-panel {
+  background: linear-gradient(180deg, rgba(11, 18, 27, 0.96), rgba(7, 12, 19, 0.93));
+  border: 1px solid rgba(61, 86, 110, 0.72);
+  border-radius: 10px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(0, 212, 255, 0.025) inset;
+  backdrop-filter: blur(12px);
+}
+#left-panel, #system-status-panel, #right-sidebar {
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.38), 0 0 28px rgba(0, 212, 255, 0.035);
+}
+#right-sidebar > * { border-radius: 10px; }
+#right-sidebar .queue-table td, #right-sidebar .queue-table th { padding-top: 7px; padding-bottom: 7px; }
+#left-panel { width: 232px !important; }
+#system-status-panel { width: 248px !important; }
+#map .leaflet-container { background: #061018 !important; }
+.leaflet-control-zoom { border-radius: 8px !important; overflow: hidden; box-shadow: 0 10px 26px rgba(0,0,0,.32) !important; }
+.ml-modal { background: radial-gradient(circle at center, rgba(0, 212, 255, 0.045), rgba(4, 7, 12, 0.95) 52%); }
+.survey-picker-panel { border-color: rgba(0, 212, 255, 0.26); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.58), 0 0 70px rgba(0, 212, 255, 0.06); }
+.survey-picker-panel .grid > button { border-radius: 9px; box-shadow: 0 8px 24px rgba(0,0,0,.16); }
+.survey-picker-panel .grid > button:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(0,0,0,.24), 0 0 0 1px rgba(0, 212, 255, .08) inset; }
+.export-toast { position: fixed; top: 58px; right: 18px; z-index: 10000; display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: rgba(7, 18, 15, 0.96); border: 1px solid rgba(0, 255, 136, .35); border-radius: 8px; color: #7fffc0; font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: .08em; box-shadow: 0 12px 30px rgba(0,0,0,.35), 0 0 24px rgba(0,255,136,.08); animation: toast-in .2s ease-out; }
+.export-toast-dot { width: 7px; height: 7px; border-radius: 50%; background: #00ff88; box-shadow: 0 0 12px rgba(0,255,136,.8); }
+.download-glyph { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border: 1px solid currentColor; border-radius: 3px; line-height: 11px; font-size: 12px; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 1100px) { #left-panel { width: 210px !important; } #system-status-panel { width: 220px !important; } #right-sidebar { width: 300px !important; } }

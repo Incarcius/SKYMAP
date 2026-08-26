@@ -1,6 +1,57 @@
 import React from 'react';
-import { TargetIcon, XIcon, CheckIcon } from './Icons';
+import { TargetIcon, XIcon, CheckIcon, ShieldAlertIcon } from './Icons';
 import { confColor, roofColor, pxToLatLng } from '../utils/geo';
+import { getFlagReasons, getRecommendedAction } from '../utils/flagReasons';
+
+const SEVERITY_COLOR = {
+  high: '#ff3355',
+  medium: '#ffaa00',
+  info: '#00d4ff',
+};
+
+function WhyFlaggedSection({ building }) {
+  const priority = building.review_priority || '';
+  const isFlagged = priority && !priority.startsWith('LOW');
+  if (!isFlagged) return null;
+
+  const reasons = getFlagReasons(building);
+  const action = getRecommendedAction(building);
+
+  return (
+    <div className="border-t border-gcs-border pt-1.5 space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        <ShieldAlertIcon className="w-3 h-3 text-gcs-amber" />
+        <span className="font-mono text-[10px] font-bold tracking-wider text-gcs-amber">
+          WHY THIS PROPERTY WAS FLAGGED
+        </span>
+      </div>
+
+      <div className="space-y-1.5">
+        {reasons.map(r => (
+          <div key={r.id} className="pl-1 border-l-2" style={{ borderColor: SEVERITY_COLOR[r.severity] }}>
+            <div className="font-mono text-[10px] font-bold" style={{ color: SEVERITY_COLOR[r.severity] }}>
+              {r.title}
+            </div>
+            <div className="font-mono text-[10px] text-gcs-dim leading-tight">{r.detail}</div>
+          </div>
+        ))}
+      </div>
+
+      {action && (
+        <div className="mt-1.5 border border-gcs-amber/30 bg-gcs-amber/5 px-2 py-1.5">
+          <div className="font-mono text-[9px] font-bold tracking-wider text-gcs-amber mb-0.5">
+            RECOMMENDED ACTION
+          </div>
+          <div className="font-mono text-[10px] text-gcs-text leading-tight">{action}</div>
+        </div>
+      )}
+
+      <div className="font-mono text-[9px] text-slate-600 italic">
+        Rule-based explanation derived from model outputs.
+      </div>
+    </div>
+  );
+}
 
 export default function RightSidebar({
   buildings,
@@ -39,9 +90,9 @@ export default function RightSidebar({
   const priColor = priority === 'HIGH' ? '#ff3355' : priority === 'MED' ? '#ffaa00' : '#00ff88';
 
   return (
-    <aside className="absolute right-4 top-16 bottom-12 w-84 flex flex-col gap-3 z-[1000] select-none pointer-events-auto">
+    <aside id="right-sidebar" className="absolute right-4 top-16 bottom-12 w-84 flex flex-col gap-3 z-[1000] select-none pointer-events-auto">
       {/* ── TOP HALF: TARGET INSPECTOR CARD ────────────────────────────────────── */}
-      <div className="gcs-panel shrink-0 p-0 overflow-hidden flex flex-col">
+      <div className="gcs-panel shrink-0 p-0 overflow-hidden flex flex-col max-h-[70%]">
         {/* Header */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-gcs-border justify-between bg-slate-950/60">
           <div className="flex items-center gap-2">
@@ -62,7 +113,7 @@ export default function RightSidebar({
 
         {/* Content Body */}
         {b ? (
-          <div className="px-3 py-2.5 space-y-2">
+          <div className="px-3 py-2.5 space-y-2 overflow-y-auto">
             <div className="flex justify-between items-center">
               <div className="font-mono text-sm font-bold text-white">BLDG #{b.id}</div>
               <span
@@ -172,6 +223,9 @@ export default function RightSidebar({
                 )}
               </div>
             )}
+
+            {/* NEW: Why Was This Building Flagged? */}
+            <WhyFlaggedSection building={b} />
 
             {/* Coordinates */}
             <div className="border-t border-gcs-border pt-1.5 flex justify-between font-mono text-[10px] text-gcs-cyan">

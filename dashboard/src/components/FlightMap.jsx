@@ -10,8 +10,8 @@ import {
   useMapEvents,
 } from 'react-leaflet';
 import {
-  ZONE_BOUNDS,
   pxToLatLng,
+  bboxToLatLngBounds,
   roofColor,
   taxColor,
   confColor,
@@ -33,14 +33,15 @@ function MapEventListener({ onCursorMove }) {
 /**
  * Controller component inside MapContainer to react to flyTarget, zoom lock & engaged props.
  */
-function MapController({ engaged, flyTarget, setIsAnimating }) {
+function MapController({ engaged, flyTarget, activeVillage, setIsAnimating }) {
   const map = useMap();
 
   // Fly down on ENGAGE toggle and manage animation state & zoom lock
   useEffect(() => {
     setIsAnimating(true); // Start animation state
     if (engaged) {
-      map.flyToBounds(ZONE_BOUNDS, { padding: [10, 10], animate: true, duration: 1.5 });
+      const regionBounds = bboxToLatLngBounds(activeVillage?.bbox);
+      map.flyToBounds(regionBounds, { padding: [40, 40], animate: true, duration: 1.5, maxZoom: 18 });
       const timer = setTimeout(() => {
         map.setMinZoom(map.getZoom());
         setIsAnimating(false); // End animation state
@@ -54,7 +55,7 @@ function MapController({ engaged, flyTarget, setIsAnimating }) {
       }, 1600);
       return () => clearTimeout(timer);
     }
-  }, [engaged, map, setIsAnimating]);
+  }, [engaged, activeVillage, map, setIsAnimating]);
 
   // Fly to specific building when flyTarget changes
   useEffect(() => {
@@ -75,6 +76,7 @@ export default function FlightMap({
   buildings,
   roads,
   water,
+  activeVillage,
   layerVis,
   thematicMode,
   engaged,
@@ -87,6 +89,13 @@ export default function FlightMap({
   const [isAnimating, setIsAnimating] = useState(false);
 
   const maxTax = Math.max(...buildings.map(b => b.estimated_annual_tax_inr || 0), 1);
+  const toMapLatLng = point => {
+    const { x0, x1, y0, y1 } = activeVillage?.bbox || { x0: 0, x1: 1000, y0: 0, y1: 1000 };
+    const x = ((point[0] - x0) / (x1 - x0)) * 1000;
+    const y = ((point[1] - y0) / (y1 - y0)) * 1000;
+    return pxToLatLng(x, y);
+  };
+
 
   // Dynamic building polygon styling based on state & thematic mode
   const getBldgStyle = b => {
@@ -142,7 +151,7 @@ export default function FlightMap({
   // Compute reticle bounds for selected building
   let reticleBounds = null;
   if (selectedBuilding && selectedBuilding.polygon_px) {
-    const latlngs = selectedBuilding.polygon_px.map(p => pxToLatLng(p[0], p[1]));
+    const latlngs = selectedBuilding.polygon_px.map(toMapLatLng);
     const lats = latlngs.map(ll => ll[0]);
     const lngs = latlngs.map(ll => ll[1]);
     const s = Math.min(...lats), n = Math.max(...lats);
@@ -155,13 +164,14 @@ export default function FlightMap({
     ];
   }
 
-  // Outer and inner rings for the Spotlight Mask (dimming surroundings when engaged)
+  const activeBounds = bboxToLatLngBounds(activeVillage?.bbox);
+  // Spotlight the currently selected survey image, not the entire source tile.
   const outerRing = [[-90, -180], [90, -180], [90, 180], [-90, 180]];
   const innerRing = [
-    [ZONE_BOUNDS[0][0], ZONE_BOUNDS[0][1]], // South-West
-    [ZONE_BOUNDS[1][0], ZONE_BOUNDS[0][1]], // North-West
-    [ZONE_BOUNDS[1][0], ZONE_BOUNDS[1][1]], // North-East
-    [ZONE_BOUNDS[0][0], ZONE_BOUNDS[1][1]], // South-East
+    [activeBounds[0][0], activeBounds[0][1]],
+    [activeBounds[1][0], activeBounds[0][1]],
+    [activeBounds[1][0], activeBounds[1][1]],
+    [activeBounds[0][0], activeBounds[1][1]],
   ];
 
   return (
@@ -175,7 +185,7 @@ export default function FlightMap({
         zoomControl={true}
         className="w-full h-full"
       >
-        <MapController engaged={engaged} flyTarget={flyTarget} setIsAnimating={setIsAnimating} />
+        <MapController engaged={engaged} activeVillage={activeVillage} flyTarget={flyTarget} setIsAnimating={setIsAnimating} />
         <MapEventListener onCursorMove={onCursorMove} />
 
         {/* Satellite Base Layer — grayscale applied via .map-engaged CSS when engaged */}
@@ -184,6 +194,7 @@ export default function FlightMap({
           attribution="Esri World Imagery"
           maxZoom={21}
           noWrap={true}
+          opacity={engaged ? 0.16 : 1}
         />
 
         {/* Spotlight Mask: Dims rest of Earth ONLY IF engaged && !isAnimating */}
@@ -201,7 +212,7 @@ export default function FlightMap({
         {/* Target Zone Red Box: Render ONLY IF !engaged && !isAnimating */}
         {!engaged && !isAnimating && (
           <Rectangle
-            bounds={ZONE_BOUNDS}
+            bounds={activeBounds}
             pathOptions={{
               color: '#ff3355',
               weight: 2,
@@ -216,8 +227,8 @@ export default function FlightMap({
         {/* Base64 Aerial Orthophoto: Render IF engaged || isAnimating for smooth zoom scaling */}
         {(engaged || isAnimating) && (
           <ImageOverlay
-            url={IMG_B64}
-            bounds={ZONE_BOUNDS}
+            url={activeVillage?.image || IMG_B64}
+            bounds={activeBounds}
             opacity={1.0}
           />
         )}
@@ -225,7 +236,7 @@ export default function FlightMap({
         {/* Tactical Boundary Frame: Render ONLY IF engaged && !isAnimating */}
         {engaged && !isAnimating && (
           <Rectangle
-            bounds={ZONE_BOUNDS}
+            bounds={activeBounds}
             pathOptions={{
               color: '#0ea5e9',
               weight: 6,
@@ -239,7 +250,7 @@ export default function FlightMap({
         {/* Vector Waterbodies: Render ONLY IF engaged && !isAnimating */}
         {engaged && !isAnimating && layerVis.water && water.map((w, idx) => {
           if (!w.polygon_px || w.polygon_px.length < 3) return null;
-          const latlngs = w.polygon_px.map(p => pxToLatLng(p[0], p[1]));
+          const latlngs = w.polygon_px.map(toMapLatLng);
           return (
             <Polygon
               key={`water-${w.id || idx}`}
@@ -257,7 +268,7 @@ export default function FlightMap({
         {/* Vector Roads: Render ONLY IF engaged && !isAnimating */}
         {engaged && !isAnimating && layerVis.roads && roads.map((r, idx) => {
           if (!r.polyline_px || r.polyline_px.length < 2) return null;
-          const latlngs = r.polyline_px.map(p => pxToLatLng(p[0], p[1]));
+          const latlngs = r.polyline_px.map(toMapLatLng);
           return (
             <Polyline
               key={`road-${r.id || idx}`}
@@ -274,7 +285,7 @@ export default function FlightMap({
         {/* Vector Buildings: Render ONLY IF engaged && !isAnimating */}
         {engaged && !isAnimating && layerVis.buildings && buildings.map((b, idx) => {
           if (!b.polygon_px || b.polygon_px.length < 3) return null;
-          const latlngs = b.polygon_px.map(p => pxToLatLng(p[0], p[1]));
+          const latlngs = b.polygon_px.map(toMapLatLng);
           const style = getBldgStyle(b);
           return (
             <Polygon
