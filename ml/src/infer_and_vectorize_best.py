@@ -182,85 +182,16 @@ print(f'\nBuildings: {len(building_records)} detected')
 #   e) Minimum area lowered to 50 px and threshold to 1.8 to catch narrower
 #      village paths without letting blobby noise through.
 # =====================================================================
-gray = cv2.cvtColor(rgb_u8, cv2.COLOR_RGB2GRAY)
-hsv_full = cv2.cvtColor(rgb_u8, cv2.COLOR_RGB2HSV)
-sat = hsv_full[:, :, 1]
-val = hsv_full[:, :, 2]
-hue = hsv_full[:, :, 0]
-
-# a) Broader colour candidate: grey asphalt + dirt/laterite + bright concrete
-asphalt          = ((sat < 55) & (val > 65) & (val < 210)).astype(np.uint8)
-dirt_road        = ((hue > 5) & (hue < 25) & (sat > 15) & (sat < 80)
-                    & (val > 80) & (val < 190)).astype(np.uint8)
-bright_concrete  = ((sat < 35) & (val >= 200)).astype(np.uint8)
-road_color_candidate = np.clip(asphalt + dirt_road + bright_concrete, 0, 1).astype(np.uint8)
-building_dilated = cv2.dilate(building_clean, np.ones((9, 9), np.uint8))
-road_color_candidate[building_dilated > 0] = 0
-
-# b) Multi-orientation linear opening — finer steps + longer SE
-LENGTH = 31
-responses = np.zeros_like(gray, dtype=np.float32)
-for angle_deg in range(0, 180, 10):
-    se = np.zeros((LENGTH, LENGTH), dtype=np.uint8)
-    cv2.line(se, (0, LENGTH // 2), (LENGTH - 1, LENGTH // 2), 1, 1)
-    M = cv2.getRotationMatrix2D((LENGTH / 2, LENGTH / 2), angle_deg, 1.0)
-    se_rot = cv2.warpAffine(se, M, (LENGTH, LENGTH), flags=cv2.INTER_NEAREST)
-    opened = cv2.morphologyEx(road_color_candidate * 255, cv2.MORPH_OPEN, se_rot)
-    responses = np.maximum(responses, opened.astype(np.float32))
-
-road_mask = (responses > 0).astype(np.uint8) * 255
-# c) Larger close kernel bridges gaps in fragmented road segments
-road_mask = cv2.morphologyEx(road_mask, cv2.MORPH_CLOSE, np.ones((11, 11), np.uint8))
-
-# d) PCA elongation filter — correctly handles diagonal / curved roads
-labeled = cc_label(road_mask > 0)
-road_filtered = np.zeros_like(road_mask)
-for region in regionprops(labeled):
-    if region.area < 50:
-        continue
-    # axis_major/minor_length are PCA-derived — robust to shape orientation
-    major = region.axis_major_length
-    minor = region.axis_minor_length
-    elongation = major / (minor + 1e-6)
-    if elongation > 1.8:  # lower threshold to preserve village paths & curves
-        road_filtered[labeled == region.label] = 255
-
-# e) Cleanup stray pixels that survived the elongation test
-road_filtered = cv2.morphologyEx(road_filtered, cv2.MORPH_OPEN,
-                                 np.ones((3, 3), np.uint8))
-
-skeleton = skeletonize(road_filtered > 0)
+# ── Roads v3: vegetation mask, CLAHE, width filter, gap bridging ──────────
+from road_detector import detect_roads, vectorize_skeleton
+_, road_filtered, skeleton, _, _ = detect_roads(rgb_u8, building_clean=building_clean, GSD_M=GSD_M)
+road_records = vectorize_skeleton(skeleton, GSD_M=GSD_M)
 sk_labeled = cc_label(skeleton)
-
-road_records = []
 overlay_roads = overlay.copy()
-for region in regionprops(sk_labeled):
-    pts = np.array(region.coords)  # (row, col) = (y, x)
-    if len(pts) < 8:
-        continue
-    pts_xy = pts[:, ::-1].astype(np.float32)  # -> (x, y)
-    mean = pts_xy.mean(axis=0)
-    centered = pts_xy - mean
-    # PCA: principal axis of this skeleton component
-    cov = np.cov(centered.T)
-    eigvals, eigvecs = np.linalg.eigh(cov)
-    principal = eigvecs[:, np.argmax(eigvals)]
-    proj = centered @ principal
-    order = np.argsort(proj)
-    ordered_pts = pts_xy[order]
-    # subsample for a clean polyline (every ~4th point)
-    simplified = ordered_pts[::max(1, len(ordered_pts) // 25)]
-    length_m = float(round(np.linalg.norm(ordered_pts[-1] - ordered_pts[0]) * GSD_M, 1))
-    if length_m < 15:  # drop very short spurious segments
-        continue
-    road_records.append({
-        'id': int(region.label),
-        'polyline_px': [[float(p[0]), float(p[1])] for p in simplified],
-        'length_m': length_m,
-    })
-    poly_int = simplified.astype(int)
-    for j in range(len(poly_int) - 1):
-        cv2.line(overlay_roads, tuple(poly_int[j]), tuple(poly_int[j + 1]), (255, 255, 0), 3)
+for rec in road_records:
+    pts = np.array(rec['polyline_px']).astype(int)
+    for j in range(len(pts) - 1):
+        cv2.line(overlay_roads, tuple(pts[j]), tuple(pts[j + 1]), (255, 255, 0), 3)
 
 print(f'Roads: {len(road_records)} segments detected, total length '
       f'{sum(r["length_m"] for r in road_records):,.0f} m')
@@ -268,7 +199,13 @@ print(f'Roads: {len(road_records)} segments detected, total length '
 # =====================================================================
 # 3. WATERBODIES — HSV blue/cyan threshold + low-texture filter
 # =====================================================================
+# Recompute HSV/gray needed for water (road_detector used its own enhanced copy)
+hsv_full = cv2.cvtColor(rgb_u8, cv2.COLOR_RGB2HSV)
+sat = hsv_full[:, :, 1]
+val = hsv_full[:, :, 2]
 hue = hsv_full[:, :, 0]
+gray = cv2.cvtColor(rgb_u8, cv2.COLOR_RGB2GRAY)
+building_dilated = cv2.dilate(building_clean, np.ones((9, 9), np.uint8))
 water_candidate = (((hue > 85) & (hue < 135)) & (sat > 40) & (val > 60) & (val < 220)).astype(np.uint8)
 
 # reject high-texture blue regions (e.g. blue-tinted roofs/cars have edges;

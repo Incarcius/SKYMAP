@@ -8,6 +8,7 @@ export default function TelemetryHUD({
   engaged,
   onEngageToggle,
   onOpenVillagePicker,
+  onOpenUpload,
   activeVillageName,
   triageMode,
 }) {
@@ -158,6 +159,17 @@ export default function TelemetryHUD({
       <div className="px-3 shrink-0">
         <span className="font-mono text-xs text-gcs-dim">{timeStr}</span>
       </div>
+
+      {/* Upload Button */}
+      <button
+        id="hud-upload-btn"
+        onClick={onOpenUpload}
+        className="shrink-0 flex items-center gap-1.5 font-mono text-xs font-bold tracking-widest px-3 py-1 border border-gcs-cyan text-gcs-cyan hover:bg-gcs-cyan hover:text-black bg-transparent transition-colors ml-2"
+        style={{ height: '28px', letterSpacing: '0.1em' }}
+        title="Upload your own image for detection"
+      >
+        ⬆ UPLOAD
+      </button>
 
       {/* Region / Village Picker Button */}
       <button

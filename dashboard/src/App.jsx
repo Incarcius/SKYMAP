@@ -8,6 +8,7 @@ import MLGalleryModal from './components/MLGalleryModal';
 import SystemStatus from './components/SystemStatus';
 import MetricsPage from './components/MetricsPage';
 import VillagePicker from './components/VillagePicker';
+import UploadModal from './components/UploadModal';
 
 import initialBuildingsRaw from './data/buildings.json';
 import initialRoadsRaw from './data/roads.json';
@@ -28,58 +29,72 @@ const STAGE_DURATION_MS = 380;
 const DEFAULT_VILLAGE_ID = 'area_01';
 
 export default function App() {
-  // ── Region / Village selection (the "pick between photos" feature) ──────
+  // ── Core state (must be defined before any derived memo/effect) ──────
   const [selectedVillageId, setSelectedVillageId] = useState(DEFAULT_VILLAGE_ID);
-  const [pickerOpen, setPickerOpen] = useState(true); // shown on first load
-  const [pickerDismissible, setPickerDismissible] = useState(true); // 'full' is preselected, so closing without picking is fine
-
-  const activeVillage = getVillageOption(selectedVillageId);
-
-  // Re-filter the SAME real dataset down to whichever photo/region is active.
-  const filteredInitialData = useMemo(
-    () => filterAllByRegion(initialBuildingsRaw, initialRoadsRaw, initialWaterRaw, activeVillage.bbox),
-    [activeVillage]
-  );
-
-  // Global reactive state
-  const initialFeatures = activeVillage.featureAvailability || { buildings: true, roads: true, water: true };
-  const [buildings, setBuildings] = useState(initialFeatures.buildings ? filteredInitialData.buildings : []);
-  const [roads, setRoads] = useState(initialFeatures.roads ? filteredInitialData.roads : []);
-  const [water, setWater] = useState(initialFeatures.water ? filteredInitialData.water : []);
-
+  const [pickerOpen, setPickerOpen] = useState(true);
+  const [pickerDismissible, setPickerDismissible] = useState(true);
+  const [customUpload, setCustomUpload] = useState(null); // {imageDataUrl, buildings, roads, water, width, height, counts, gsd}
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [engaged, setEngaged] = useState(false);
-
-  // Vector Layer visibility is user-controlled; switching survey areas initializes sensible defaults.
   const [layerVis, setLayerVis] = useState({
     buildings: false,
     roads: false,
     water: true,
   });
   const [thematicMode, setThematicMode] = useState('mat');
-
-  // New: Triage Mode + Gallery modal state
   const [triageMode, setTriageMode] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
-
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [flyTarget, setFlyTarget] = useState(null);
   const [cursorCoords, setCursorCoords] = useState(null);
-
-  // ── System Status: PROCESSING -> OPERATIONAL pipeline simulation ─────────
   const [appStatus, setAppStatus] = useState(APP_STATUS.PROCESSING);
   const [currentStageIndex, setCurrentStageIndex] = useState(0);
   const [systemStatusCollapsed, setSystemStatusCollapsed] = useState(false);
   const [exportNotice, setExportNotice] = useState('');
 
+  const activeVillage = useMemo(() => customUpload ? {
+    id: 'custom_upload',
+    name: `Uploaded · ${customUpload.width}×${customUpload.height} · ${customUpload.gsd} m/px`,
+    image: customUpload.imageDataUrl,
+    bbox: { x0: 0, x1: customUpload.width, y0: 0, y1: customUpload.height },
+    featureAvailability: { buildings: true, roads: true, water: true },
+  } : getVillageOption(selectedVillageId), [customUpload, selectedVillageId]);
+
+  // Re-filter the SAME real dataset down to whichever photo/region is active.
+  const filteredInitialData = useMemo(
+    () => customUpload ? { buildings: customUpload.buildings, roads: customUpload.roads, water: customUpload.water }
+      : filterAllByRegion(initialBuildingsRaw, initialRoadsRaw, initialWaterRaw, activeVillage.bbox),
+    [activeVillage, customUpload]
+  );
+
+  // Global reactive state — init from filtered data on first mount
+  const initialFeatures = activeVillage.featureAvailability || { buildings: true, roads: true, water: true };
+  const [buildings, setBuildings] = useState(() => initialFeatures.buildings ? filteredInitialData.buildings : []);
+  const [roads, setRoads] = useState(() => initialFeatures.roads ? filteredInitialData.roads : []);
+  const [water, setWater] = useState(() => initialFeatures.water ? filteredInitialData.water : []);
+
+  // Sync when switching village or after upload (but not on first mount to avoid flash)
+  const isFirstSync = React.useRef(true);
+  useEffect(() => {
+    if (isFirstSync.current) { isFirstSync.current = false; return; }
+    setBuildings(initialFeatures.buildings ? filteredInitialData.buildings : []);
+    setRoads(initialFeatures.roads ? filteredInitialData.roads : []);
+    setWater(initialFeatures.water ? filteredInitialData.water : []);
+    if (customUpload) {
+      setLayerVis(prev => ({ buildings: true, roads: false, water: true })); // roads OFF by default per request
+      setEngaged(true);
+      setFlyTarget({ bounds: bboxToLatLngBounds(activeVillage.bbox), id: 'custom-upload', timestamp: Date.now() });
+      setCurrentStageIndex(0); setAppStatus(APP_STATUS.PROCESSING);
+    }
+  }, [filteredInitialData]);
+
   useEffect(() => {
     if (appStatus !== APP_STATUS.PROCESSING) return;
-
     if (currentStageIndex >= PROCESSING_STAGES.length - 1) {
       const finishTimer = setTimeout(() => setAppStatus(APP_STATUS.OPERATIONAL), STAGE_DURATION_MS);
       return () => clearTimeout(finishTimer);
     }
-
     const stepTimer = setTimeout(() => setCurrentStageIndex(i => i + 1), STAGE_DURATION_MS);
     return () => clearTimeout(stepTimer);
   }, [appStatus, currentStageIndex]);
@@ -95,7 +110,19 @@ export default function App() {
   // Load a different demo survey area: re-filters the prototype dataset, resets
   // review state for that subset, and replays the PROCESSING -> OPERATIONAL
   // pipeline so System Status narrates a genuine reload.
+  const handleUploadComplete = data => {
+    setCustomUpload(data);
+    setSelectedBuilding(null);
+    setPickerOpen(false);
+  };
+  const handleClearCustom = () => {
+    setCustomUpload(null);
+    setSelectedBuilding(null);
+    handleSelectVillage(DEFAULT_VILLAGE_ID);
+  };
+
   const handleSelectVillage = id => {
+    if (customUpload && id !== 'custom_upload') setCustomUpload(null);
     const village = getVillageOption(id);
     const filtered = filterAllByRegion(initialBuildingsRaw, initialRoadsRaw, initialWaterRaw, village.bbox);
 
@@ -104,11 +131,11 @@ export default function App() {
     setBuildings(features.buildings ? filtered.buildings : []);
     setRoads(features.roads ? filtered.roads : []);
     setWater(features.water ? filtered.water : []);
-    setLayerVis({
+    setLayerVis(prev => ({
       buildings: features.buildings && filtered.buildings.length > 0,
-      roads: features.roads && filtered.roads.length > 0,
+      roads: false, // OFF by default — user must toggle ROAD layer on per request
       water: features.water && filtered.water.length > 0,
-    });
+    }));
 
     setSelectedBuilding(null);
     setPickerOpen(false);
@@ -204,11 +231,22 @@ export default function App() {
       {/* Demo Region / Village Picker (portal-level, above everything) */}
       {pickerOpen && (
         <VillagePicker
-          activeId={selectedVillageId}
+          activeId={customUpload ? 'custom_upload' : selectedVillageId}
           dismissible={pickerDismissible}
           onSelect={handleSelectVillage}
           onClose={() => setPickerOpen(false)}
         />
+      )}
+
+      {/* Upload Modal */}
+      {uploadOpen && (
+        <UploadModal onClose={() => setUploadOpen(false)} onUploadComplete={handleUploadComplete} />
+      )}
+      {customUpload && (
+        <div className="fixed top-[48px] left-1/2 -translate-x-1/2 z-[2000] bg-gcs-cyan text-black font-mono text-xs px-3 py-1.5 rounded flex items-center gap-3 shadow-lg">
+          <span>⬆ Uploaded: {customUpload.width}×{customUpload.height} · {customUpload.counts.buildings} bldgs · {customUpload.counts.roads} roads · {customUpload.counts.total_road_m} m · {customUpload.elapsed}s</span>
+          <button onClick={handleClearCustom} className="bg-black text-gcs-cyan px-2 py-0.5 rounded text-[11px] hover:bg-slate-800">✕ Clear</button>
+        </div>
       )}
 
       {/* ML Gallery Modal (portal-level, above everything) */}
@@ -229,6 +267,7 @@ export default function App() {
         onEngageToggle={handleEngageToggle}
         triageMode={triageMode}
         onOpenVillagePicker={() => setPickerOpen(true)}
+        onOpenUpload={() => setUploadOpen(true)}
         activeVillageName={activeVillage.name}
       />
 
