@@ -167,23 +167,40 @@ for idx, rec in enumerate(building_records):
 print(f'\nBuildings: {len(building_records)} detected')
 
 # =====================================================================
-# 2. ROADS — multi-orientation morphological linear-feature detector
+# 2. ROADS — improved multi-orientation morphological linear-feature detector
+#
+#  v2 improvements over the original:
+#   a) Broader colour mask: adds dirt/laterite roads (warm hue, moderate sat)
+#      and bright concrete paths, not just grey asphalt.
+#   b) Finer angular sampling: 10° steps instead of 15° so oblique roads
+#      are caught; longer SE (31px) captures road continuity better.
+#   c) Larger morphological close (11×11) to bridge fragmented segments.
+#   d) PCA-based elongation filter: uses region.axis_major_length /
+#      axis_minor_length instead of the bounding-box ratio. The bounding-box
+#      approach falsely rejects diagonal / L-shaped / curved roads because
+#      their bbox is roughly square even though the region itself is thin.
+#   e) Minimum area lowered to 50 px and threshold to 1.8 to catch narrower
+#      village paths without letting blobby noise through.
 # =====================================================================
 gray = cv2.cvtColor(rgb_u8, cv2.COLOR_RGB2GRAY)
 hsv_full = cv2.cvtColor(rgb_u8, cv2.COLOR_RGB2HSV)
 sat = hsv_full[:, :, 1]
 val = hsv_full[:, :, 2]
+hue = hsv_full[:, :, 0]
 
-# candidate: low-saturation (grayish asphalt), mid brightness, not a building
-road_color_candidate = ((sat < 60) & (val > 70) & (val < 200)).astype(np.uint8)
+# a) Broader colour candidate: grey asphalt + dirt/laterite + bright concrete
+asphalt          = ((sat < 55) & (val > 65) & (val < 210)).astype(np.uint8)
+dirt_road        = ((hue > 5) & (hue < 25) & (sat > 15) & (sat < 80)
+                    & (val > 80) & (val < 190)).astype(np.uint8)
+bright_concrete  = ((sat < 35) & (val >= 200)).astype(np.uint8)
+road_color_candidate = np.clip(asphalt + dirt_road + bright_concrete, 0, 1).astype(np.uint8)
 building_dilated = cv2.dilate(building_clean, np.ones((9, 9), np.uint8))
 road_color_candidate[building_dilated > 0] = 0
 
-# multi-orientation linear opening: response strong only where a long thin
-# structure aligned to that angle exists (roads), weak on blobby regions
-LENGTH = 21
+# b) Multi-orientation linear opening — finer steps + longer SE
+LENGTH = 31
 responses = np.zeros_like(gray, dtype=np.float32)
-for angle_deg in range(0, 180, 15):
+for angle_deg in range(0, 180, 10):
     se = np.zeros((LENGTH, LENGTH), dtype=np.uint8)
     cv2.line(se, (0, LENGTH // 2), (LENGTH - 1, LENGTH // 2), 1, 1)
     M = cv2.getRotationMatrix2D((LENGTH / 2, LENGTH / 2), angle_deg, 1.0)
@@ -192,20 +209,25 @@ for angle_deg in range(0, 180, 15):
     responses = np.maximum(responses, opened.astype(np.float32))
 
 road_mask = (responses > 0).astype(np.uint8) * 255
-road_mask = cv2.morphologyEx(road_mask, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+# c) Larger close kernel bridges gaps in fragmented road segments
+road_mask = cv2.morphologyEx(road_mask, cv2.MORPH_CLOSE, np.ones((11, 11), np.uint8))
 
-# elongation filter: keep only connected components that are actually
-# road-shaped (long and thin), reject leftover blobby noise
+# d) PCA elongation filter — correctly handles diagonal / curved roads
 labeled = cc_label(road_mask > 0)
 road_filtered = np.zeros_like(road_mask)
 for region in regionprops(labeled):
-    if region.area < 60:
+    if region.area < 50:
         continue
-    minr, minc, maxr, maxc = region.bbox
-    h_box, w_box = maxr - minr, maxc - minc
-    elongation = max(h_box, w_box) / (min(h_box, w_box) + 1e-6)
-    if elongation > 2.0:  # roads are elongated; blobs are not
+    # axis_major/minor_length are PCA-derived — robust to shape orientation
+    major = region.axis_major_length
+    minor = region.axis_minor_length
+    elongation = major / (minor + 1e-6)
+    if elongation > 1.8:  # lower threshold to preserve village paths & curves
         road_filtered[labeled == region.label] = 255
+
+# e) Cleanup stray pixels that survived the elongation test
+road_filtered = cv2.morphologyEx(road_filtered, cv2.MORPH_OPEN,
+                                 np.ones((3, 3), np.uint8))
 
 skeleton = skeletonize(road_filtered > 0)
 sk_labeled = cc_label(skeleton)
