@@ -16,7 +16,7 @@ export default function LayerControls({
   return (
     <div
       id="left-panel"
-      className="gcs-panel absolute left-4 top-28 z-[1000] w-[210px] p-0 select-none pointer-events-auto"
+      className="gcs-panel relative w-full h-full flex flex-col p-0 select-none pointer-events-auto overflow-y-auto"
     >
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-gcs-border">
@@ -78,7 +78,7 @@ export default function LayerControls({
       </div>
 
       {/* Thematic Overlays */}
-      <div className="border-t border-gcs-border px-3 py-2">
+      <div className="border-t border-gcs-border px-3 pt-2 pb-3">
         <div className="font-mono text-xs text-gcs-dim mb-2 tracking-wider">
           THEMATIC OVERLAY
         </div>

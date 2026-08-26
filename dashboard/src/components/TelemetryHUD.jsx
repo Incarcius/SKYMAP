@@ -7,11 +7,8 @@ export default function TelemetryHUD({
   roads,
   engaged,
   onEngageToggle,
-  onOpenGallery,
-  onOpenMetrics,
   onOpenVillagePicker,
   activeVillageName,
-  onExportCsv,
   triageMode,
 }) {
   const [timeStr, setTimeStr] = useState('');
@@ -157,17 +154,6 @@ export default function TelemetryHUD({
 
       <div className="flex-1 min-w-[20px]" />
 
-      {/* Triage Active Indicator (only when triageMode is on) */}
-      {triageMode && (
-        <>
-          <div className="flex items-center gap-1.5 px-3 shrink-0">
-            <ShieldAlertIcon className="w-3.5 h-3.5 text-gcs-amber" />
-            <span className="blink font-mono text-xs font-bold text-gcs-amber">TRIAGE ACTIVE</span>
-          </div>
-          <div className="hud-sep" />
-        </>
-      )}
-
       {/* Live UTC Clock */}
       <div className="px-3 shrink-0">
         <span className="font-mono text-xs text-gcs-dim">{timeStr}</span>
@@ -183,43 +169,6 @@ export default function TelemetryHUD({
       >
         <ImageIcon className="w-3.5 h-3.5" />
         REGIONS
-      </button>
-
-      {/* CSV Export */}
-      <button
-        id="hud-export-csv-btn"
-        onClick={onExportCsv}
-        disabled={!buildings.length}
-        className="shrink-0 flex items-center gap-1.5 font-mono text-xs font-bold tracking-widest px-3 py-1 border border-gcs-border text-gcs-dim hover:text-gcs-green hover:border-gcs-green bg-transparent transition-colors ml-2 disabled:opacity-30 disabled:cursor-not-allowed"
-        style={{ height: '28px', letterSpacing: '0.1em' }}
-        title="Export current survey results as CSV"
-      >
-        <span className="download-glyph" aria-hidden="true">↓</span>
-        EXPORT CSV
-      </button>
-
-      {/* Overall Metrics Button */}
-      <button
-        id="hud-metrics-btn"
-        onClick={onOpenMetrics}
-        className="shrink-0 flex items-center gap-1.5 font-mono text-xs font-bold tracking-widest px-3 py-1 border border-gcs-border text-gcs-dim hover:text-gcs-purple hover:border-gcs-purple bg-transparent transition-colors ml-2"
-        style={{ height: '28px', letterSpacing: '0.1em' }}
-        title="Open Overall Metrics"
-      >
-        <LayersIcon className="w-3.5 h-3.5" />
-        METRICS
-      </button>
-
-      {/* ML Gallery Button */}
-      <button
-        id="hud-ml-gallery-btn"
-        onClick={onOpenGallery}
-        className="shrink-0 flex items-center gap-1.5 font-mono text-xs font-bold tracking-widest px-3 py-1 border border-gcs-border text-gcs-dim hover:text-gcs-cyan hover:border-gcs-cyan bg-transparent transition-colors ml-2"
-        style={{ height: '28px', letterSpacing: '0.1em' }}
-        title="Open ML Gallery"
-      >
-        <ImageIcon className="w-3.5 h-3.5" />
-        GALLERY
       </button>
 
       {/* ENGAGE / DISENGAGE Button */}

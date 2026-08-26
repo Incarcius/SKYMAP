@@ -62,13 +62,23 @@ html, body, #root {
 .leaflet-control-zoom {
   border: 1px solid #1e2d3d !important;
   background: #0d1117 !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: 0 10px 26px rgba(0,0,0,.32) !important;
+  display: flex !important;
+  flex-direction: row !important;
 }
 .leaflet-control-zoom a {
   background: #0d1117 !important;
   color: #00d4ff !important;
-  border-bottom: 1px solid #1e2d3d !important;
+  border-bottom: none !important;
+  border-right: 1px solid #1e2d3d !important;
+}
+.leaflet-control-zoom a:last-child {
+  border-right: none !important;
 }
 .leaflet-control-zoom a:hover { background: #1e2d3d !important; }
+.leaflet-top.leaflet-left { margin-top: 1.5rem !important; margin-left: 1rem !important; }
 .leaflet-control-attribution {
   background: rgba(8,12,16,0.8) !important;
   color: #4a6075 !important;
@@ -188,7 +198,7 @@ html, body, #root {
   background: #0d1117;
   border: 1px solid #1e2d3d;
   width: 100%; max-width: 900px;
-  height: 100%; max-height: 700px;
+  height: auto; max-height: 95vh;
   display: flex; flex-direction: column;
   box-shadow: 0 0 60px rgba(0, 212, 255, 0.08), 0 0 120px rgba(0,0,0,0.8);
 }
@@ -256,10 +266,7 @@ html, body, #root {
 }
 #right-sidebar > * { border-radius: 10px; }
 #right-sidebar .queue-table td, #right-sidebar .queue-table th { padding-top: 7px; padding-bottom: 7px; }
-#left-panel { width: 232px !important; }
-#system-status-panel { width: 248px !important; }
 #map .leaflet-container { background: #061018 !important; }
-.leaflet-control-zoom { border-radius: 8px !important; overflow: hidden; box-shadow: 0 10px 26px rgba(0,0,0,.32) !important; }
 .ml-modal { background: radial-gradient(circle at center, rgba(0, 212, 255, 0.045), rgba(4, 7, 12, 0.95) 52%); }
 .survey-picker-panel { border-color: rgba(0, 212, 255, 0.26); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.58), 0 0 70px rgba(0, 212, 255, 0.06); }
 .survey-picker-panel .grid > button { border-radius: 9px; box-shadow: 0 8px 24px rgba(0,0,0,.16); }

@@ -64,7 +64,7 @@ function MapController({ engaged, flyTarget, activeVillage, setIsAnimating }) {
         padding: [40, 40],
         animate: true,
         duration: 1.2,
-        maxZoom: 20,
+        maxZoom: 19,
       });
     }
   }, [flyTarget, map]);
@@ -87,13 +87,10 @@ export default function FlightMap({
   triageMode,
 }) {
   const [isAnimating, setIsAnimating] = useState(false);
-
   const maxTax = Math.max(...buildings.map(b => b.estimated_annual_tax_inr || 0), 1);
+
   const toMapLatLng = point => {
-    const { x0, x1, y0, y1 } = activeVillage?.bbox || { x0: 0, x1: 1000, y0: 0, y1: 1000 };
-    const x = ((point[0] - x0) / (x1 - x0)) * 1000;
-    const y = ((point[1] - y0) / (y1 - y0)) * 1000;
-    return pxToLatLng(x, y);
+    return pxToLatLng(point[0], point[1]);
   };
 
 

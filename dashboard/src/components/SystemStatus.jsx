@@ -33,7 +33,7 @@ export default function SystemStatus({ status, collapsed, onToggleCollapsed }) {
   return (
     <div
       id="system-status-panel"
-      className="gcs-panel absolute left-4 bottom-14 z-[1000] w-[220px] p-0 select-none pointer-events-auto"
+      className="gcs-panel relative w-full p-0 select-none pointer-events-auto"
     >
       {/* Header */}
       <button

@@ -50,7 +50,11 @@ export default function App() {
   const [engaged, setEngaged] = useState(false);
 
   // Vector Layer visibility is user-controlled; switching survey areas initializes sensible defaults.
-  const [layerVis, setLayerVis] = useState({ buildings: true, roads: true, water: false });
+  const [layerVis, setLayerVis] = useState({
+    buildings: false,
+    roads: false,
+    water: true,
+  });
   const [thematicMode, setThematicMode] = useState('mat');
 
   // New: Triage Mode + Gallery modal state
@@ -174,12 +178,7 @@ export default function App() {
       setEngaged(true);
     }
     if (bldg.polygon_px) {
-      const { x0, x1, y0, y1 } = activeVillage.bbox;
-      const latlngs = bldg.polygon_px.map(p => {
-        const x = ((p[0] - x0) / (x1 - x0)) * 1000;
-        const y = ((p[1] - y0) / (y1 - y0)) * 1000;
-        return pxToLatLng(x, y);
-      });
+      const latlngs = bldg.polygon_px.map(p => pxToLatLng(p[0], p[1]));
       const lats = latlngs.map(ll => ll[0]);
       const lngs = latlngs.map(ll => ll[1]);
       const bounds = [
@@ -229,10 +228,7 @@ export default function App() {
         engaged={engaged}
         onEngageToggle={handleEngageToggle}
         triageMode={triageMode}
-        onOpenGallery={() => setGalleryOpen(true)}
-        onOpenMetrics={() => setMetricsOpen(true)}
         onOpenVillagePicker={() => setPickerOpen(true)}
-        onExportCsv={handleExportCsv}
         activeVillageName={activeVillage.name}
       />
 
@@ -253,26 +249,33 @@ export default function App() {
           triageMode={triageMode}
         />
 
-        {/* Floating Left Layer Controls */}
-        <LayerControls
-          layerVis={layerVis}
-          onToggleLayer={handleToggleLayer}
-          thematicMode={thematicMode}
-          onChangeThematicMode={setThematicMode}
-          buildingCounts={buildings.length}
-          roadCount={roads.length}
-          waterCount={water.length}
-          triageMode={triageMode}
-          onToggleTriageMode={setTriageMode}
-          onOpenGallery={() => setGalleryOpen(true)}
-        />
+        {/* Left Side Panels (Stacked) */}
+        <div className="absolute left-4 top-24 bottom-12 w-[220px] flex flex-col gap-3 z-[1000] pointer-events-none">
+          {/* Floating Left Layer Controls */}
+          <div className="pointer-events-auto flex-1 min-h-0 flex flex-col">
+            <LayerControls
+              layerVis={layerVis}
+              onToggleLayer={handleToggleLayer}
+              thematicMode={thematicMode}
+              onChangeThematicMode={setThematicMode}
+              buildingCounts={buildings.length}
+              roadCount={roads.length}
+              waterCount={water.length}
+              triageMode={triageMode}
+              onToggleTriageMode={setTriageMode}
+              onOpenGallery={() => setGalleryOpen(true)}
+            />
+          </div>
 
-        {/* Floating System Status Panel (bottom-left, above the footer) */}
-        <SystemStatus
-          status={systemStatus}
-          collapsed={systemStatusCollapsed}
-          onToggleCollapsed={() => setSystemStatusCollapsed(prev => !prev)}
-        />
+          {/* Floating System Status Panel */}
+          <div className="pointer-events-auto shrink-0">
+            <SystemStatus
+              status={systemStatus}
+              collapsed={systemStatusCollapsed}
+              onToggleCollapsed={() => setSystemStatusCollapsed(prev => !prev)}
+            />
+          </div>
+        </div>
 
         {/* Unified Floating Right Sidebar (Target Inspector + Human Review Queue) */}
         <RightSidebar
@@ -287,7 +290,14 @@ export default function App() {
       </div>
 
       {/* Slim Terminal Footer */}
-      <TerminalFooter cursorCoords={cursorCoords} />
+      <TerminalFooter
+        cursorCoords={cursorCoords}
+        onOpenGallery={() => setGalleryOpen(true)}
+        onOpenMetrics={() => setMetricsOpen(true)}
+        onExportCsv={handleExportCsv}
+        buildings={buildings}
+        triageMode={triageMode}
+      />
     </div>
   );
 }

@@ -17,7 +17,7 @@ export default function VillagePicker({ onSelect, onClose, activeId, dismissible
         if (dismissible && e.target === e.currentTarget) onClose?.();
       }}
     >
-      <div className="ml-modal-panel survey-picker-panel" style={{ maxWidth: 900 }}>
+      <div className="ml-modal-panel survey-picker-panel" style={{ maxWidth: 760 }}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-gcs-border bg-slate-950/80 shrink-0">
           <div className="flex items-center gap-2">
@@ -55,7 +55,7 @@ export default function VillagePicker({ onSelect, onClose, activeId, dismissible
                       : 'border-gcs-border bg-slate-900/60 hover:border-slate-500'
                   }`}
                 >
-                  <div className="relative w-full aspect-[16/9] bg-black overflow-hidden">
+                  <div className="relative w-full aspect-[16/9] bg-black overflow-hidden flex-shrink-0">
                     <img
                       src={opt.thumbnail}
                       alt={opt.name}
