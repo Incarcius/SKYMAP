@@ -1,0 +1,11 @@
+=== Demo Crop Auto-Selection Report ===
+
+Scanned 27 candidate windows (height=220px, stride=30px) within the held-out region (x>=800).
+
+#1 y=[270,490] x=[800,1000]  score=52.0  (buildings=32, roofs=3, water=0, roads=1, road_penalty=0.0)
+#2 y=[510,730] x=[800,1000]  score=37.0  (buildings=25, roofs=2, water=0, roads=0, road_penalty=0.0)
+#3 y=[30,250] x=[800,1000]  score=32.0  (buildings=14, roofs=3, water=0, roads=0, road_penalty=0.0)
+
+=== Rejected (worst-scoring) crops, kept for honest Q&A prep ===
+#1 y=[720,940] x=[800,1000]  score=23.57  reason: road jaggedness too high (penalty=25.4 > threshold 8.0)
+#2 y=[780,1000] x=[800,1000]  score=23.57  reason: road jaggedness too high (penalty=25.4 > threshold 8.0)

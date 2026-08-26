@@ -1,0 +1,25 @@
+# Editor directories and files
+.vscode/
+.idea/
+.DS_Store
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+
+# Large files, data, and auto-generated outputs
+ml/outputs/
+ml/data/

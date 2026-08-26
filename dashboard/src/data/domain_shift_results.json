@@ -1,0 +1,32 @@
+[
+  {
+    "condition": "Baseline (no shift)",
+    "iou": 0.3976701410055895,
+    "delta_pct": 0.0
+  },
+  {
+    "condition": "Brighter (+overexposed)",
+    "iou": 0.17804452508649532,
+    "delta_pct": -55.22808812442551
+  },
+  {
+    "condition": "Darker (overcast)",
+    "iou": 0.3014957772173288,
+    "delta_pct": -24.184456883049947
+  },
+  {
+    "condition": "Hazy/foggy (low contrast)",
+    "iou": 0.0019043195540220938,
+    "delta_pct": -99.52113086760635
+  },
+  {
+    "condition": "Hue-shifted (sensor drift)",
+    "iou": 0.29538682613859835,
+    "delta_pct": -25.720642391794136
+  },
+  {
+    "condition": "Combined worst-case",
+    "iou": 0.024455395384126773,
+    "delta_pct": -93.85033150281629
+  }
+]
